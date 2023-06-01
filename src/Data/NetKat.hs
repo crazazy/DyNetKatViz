@@ -1,7 +1,7 @@
 module Data.NetKat where
 
 import Control.Applicative (Alternative (..))
-import Data.List (iterate, transpose)
+import Data.List (iterate, lookup, transpose)
 import Data.Word (Word8 (..))
 
 data Packet = Packet
@@ -67,8 +67,8 @@ data DyNetKat
     | Ident String
     | Ask String NetKat
     | Send String NetKat
-    | Disj DyNetKat DyNetKat
-    | Par DyNetKat DyNetKat
+    | Disj [DyNetKat]
+    | Par [DyNetKat]
     deriving (Eq, Show, Read)
 
 data Transistion
@@ -77,8 +77,9 @@ data Transistion
     | TSend String NetKat
     | Rcfg String NetKat
 
-step :: [(String, DyNetKat)] -> DyNetKat -> [DyNetKat]
-step = undefined
+step :: [(String, DyNetKat)] -> DyNetKat -> [(Transition, DyNetKat)]
+step env p = case p of
+    Ident s -> fmap (step env) $ maybe [] (: []) $ lookup s env
 
 {-
 data NetKat a
