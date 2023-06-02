@@ -1,8 +1,7 @@
 module Data.NetKat where
 
-import Control.Applicative (Alternative (..))
-import Data.List (iterate, lookup, transpose)
-import Data.Word (Word8 (..))
+-- import Control.Applicative (Alternative (..))
+import Data.Word (Word8)
 
 data Packet = Packet
     { src :: Word8
@@ -21,8 +20,9 @@ data Filter
 toBinary :: Word8 -> String
 toBinary x = go 8 x
   where
+    go :: Int -> Word8 -> String
     go 0 _ = []
-    go y x = (if x `mod` 2 == 1 then '1' else '0') : (go (y - 1) $ div x 2)
+    go y x' = (if x' `mod` 2 == 1 then '1' else '0') : (go (y - 1) $ div x' 2)
 
 -- turns a packet into a binary vector
 -- >>> pToBV (Packet 4 2 23 1)
@@ -50,8 +50,40 @@ data NetKat
     | Seq NetKat NetKat
     | Closure NetKat
     deriving (Eq, Show, Read)
+mockEval :: NetKat -> Packet -> [Packet]
+mockEval Nil _ = []
+mockEval Pass x = [x]
+mockEval (Test f w) p =
+    let
+        fp = case f of
+            Src -> src
+            Dest -> dest
+            Port -> port
+            Typ -> typ
+     in
+        if fp p == w then [p] else []
+mockEval (Not n) p = if null (mockEval n p) then [p] else []
+mockEval (Change f w) p = case f of
+    Src -> [p{src = w}]
+    Dest -> [p{dest = w}]
+    Port -> [p{port = w}]
+    Typ -> [p{typ = w}]
+mockEval (Or n1 n2) p = mockEval n1 p ++ mockEval n2 p
+mockEval (Seq n1 n2) p = mockEval n1 p >>= mockEval n2
+mockEval (Closure n) p = go Pass []
+  where
+    go s xs
+        | null as = xs -- we stop when we find no new packes upon more iterations
+        | otherwise = go (Seq n s) (as ++ xs)
+      where
+        as = filter (not . flip elem xs) $ mockEval s p
+
+flowTable :: [(Word8, Word8)] -> NetKat
+flowTable ft = foldr Or Nil $ map (\(a, b) -> (Test Port a) `Seq` (Change Port b)) ft
+
 parens :: String -> String
-parents s = "(" ++ s ++ ")"
+parens s = "(" ++ s ++ ")"
+
 toKatBV :: NetKat -> String
 toKatBV Nil = "F"
 toKatBV Pass = "T"
@@ -61,25 +93,6 @@ toKatBV (Change f w) = parens $ "x:=" ++ filterToBV f w
 toKatBV (Or p1 p2) = parens $ (toKatBV p1) ++ "+" ++ (toKatBV p2)
 toKatBV (Seq p1 p2) = parens $ (toKatBV p1) ++ ";" ++ (toKatBV p2)
 toKatBV (Closure p) = parens $ "(" ++ toKatBV p ++ ")*"
-
-data DyNetKat
-    = Prog NetKat DyNetKat
-    | Ident String
-    | Ask String NetKat
-    | Send String NetKat
-    | Disj [DyNetKat]
-    | Par [DyNetKat]
-    deriving (Eq, Show, Read)
-
-data Transistion
-    = Chg Packet [Packet]
-    | TAsk String NetKat
-    | TSend String NetKat
-    | Rcfg String NetKat
-
-step :: [(String, DyNetKat)] -> DyNetKat -> [(Transition, DyNetKat)]
-step env p = case p of
-    Ident s -> fmap (step env) $ maybe [] (: []) $ lookup s env
 
 {-
 data NetKat a
