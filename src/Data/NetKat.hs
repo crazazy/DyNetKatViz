@@ -15,7 +15,7 @@ data Filter
     | Dest
     | Port
     | Typ
-    deriving (Show, Read, Eq)
+    deriving (Show, Read, Eq, Ord)
 
 toBinary :: Word8 -> String
 toBinary x = go 8 x
@@ -49,7 +49,7 @@ data NetKat
     | Or NetKat NetKat
     | Seq NetKat NetKat
     | Closure NetKat
-    deriving (Eq, Show, Read)
+    deriving (Eq, Show, Read, Ord)
 mockEval :: NetKat -> Packet -> [Packet]
 mockEval Nil _ = []
 mockEval Pass x = [x]
