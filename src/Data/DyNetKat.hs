@@ -50,16 +50,26 @@ step env pas pr = case pr of
     NonDet n1 n2 -> (step env pas n1) ++ (step env pas n2) -- rule 3 + 4
     -- BUG: program doesn't see through Ident's fully yet
     Par n1 n2 ->
-        -- rule 5 + 6 + 9 + 10
-        (map (fmap (\x -> Par x n2)) $ step env pas n1)
-            ++ (map (fmap (\x -> Par n1 x)) $ step env pas n2)
-            ++ checkRcfg (transformIdent env n1) (transformIdent env n2)
+        let
+            x1 = step env pas n1
+            x2 = step env pas n2
+         in
+            -- rule 5 + 6 + 9 + 10
+            (map (fmap (\x -> Par x n2)) x1)
+                ++ (map (fmap (\x -> Par n1 x)) x2)
+                ++ checkRcfg x1 x2
 
--- | Basically rule 9 & 10 from the paper (with symmetry)
-checkRcfg :: DyNetKat -> DyNetKat -> [(Transition, DyNetKat)]
-checkRcfg (Ask s1 nk1 nx1) (Send s2 nk2 nx2) | s1 == s2 && nk1 == nk2 = [(Rcfg s1 nk1, Par nx1 nx2)]
-checkRcfg (Send s1 nk1 nx1) (Ask s2 nk2 nx2) | s1 == s2 && nk1 == nk2 = [(Rcfg s1 nk1, Par nx1 nx2)]
-checkRcfg _ _ = [] -- we don't need to take action on the rest since that is handled by `step`
+-- | check if we can emit a reconfiguration based on actions that 2 sides of a parralel composition have done
+checkRcfg :: [(Transition, DyNetKat)] -> [(Transition, DyNetKat)] -> [(Transition, DyNetKat)]
+checkRcfg [] _ = []
+checkRcfg _ [] = []
+checkRcfg ls1@((TAsk s1 p1, nx1) : l1) ls2@((TSend s2 p2, nx2) : l2) | s1 == s2 && p1 == p2 = [(Rcfg s1 p1, Par nx1 nx2)] ++ checkRcfg l1 ls2 ++ checkRcfg ls1 l2
+checkRcfg ls1@((TSend s1 p1, nx1) : l1) ls2@((TAsk s2 p2, nx2) : l2) | s1 == s2 && p1 == p2 = [(Rcfg s1 p1, Par nx1 nx2)] ++ checkRcfg l1 ls2 ++ checkRcfg ls1 l2
+checkRcfg ls1@((TAsk _ _, _) : _) (_ : ls2) = checkRcfg ls1 ls2
+checkRcfg ls1@((TSend _ _, _) : _) (_ : ls2) = checkRcfg ls1 ls2
+checkRcfg (_ : ls1) ls2@((TAsk _ _, _) : _) = checkRcfg ls1 ls2
+checkRcfg (_ : ls1) ls2@((TSend _ _, _) : _) = checkRcfg ls1 ls2
+checkRcfg (_ : ls1) (_ : ls2) = checkRcfg ls1 ls2
 
 -- | transform a set of definitions and a DyNetKat program into a set of program transition triplets
 eval :: [(String, DyNetKat)] -> DyNetKat -> [Packet] -> [(DyNetKat, Transition, DyNetKat, [Packet], [Packet])]
