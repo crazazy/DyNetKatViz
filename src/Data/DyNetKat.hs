@@ -57,19 +57,19 @@ step env pas pr = case pr of
             -- rule 5 + 6 + 9 + 10
             (map (fmap (\x -> Par x n2)) x1)
                 ++ (map (fmap (\x -> Par n1 x)) x2)
-                ++ checkRcfg x1 x2
+                ++ checkRcfg False x1 x2
+                ++ checkRcfg True x2 x1
 
 -- | check if we can emit a reconfiguration based on actions that 2 sides of a parralel composition have done
-checkRcfg :: [(Transition, DyNetKat)] -> [(Transition, DyNetKat)] -> [(Transition, DyNetKat)]
-checkRcfg [] _ = []
-checkRcfg _ [] = []
-checkRcfg ls1@((TAsk s1 p1, nx1) : l1) ls2@((TSend s2 p2, nx2) : l2) | s1 == s2 && p1 == p2 = [(Rcfg s1 p1, Par nx1 nx2)] ++ checkRcfg l1 ls2 ++ checkRcfg ls1 l2
-checkRcfg ls1@((TSend s1 p1, nx1) : l1) ls2@((TAsk s2 p2, nx2) : l2) | s1 == s2 && p1 == p2 = [(Rcfg s1 p1, Par nx1 nx2)] ++ checkRcfg l1 ls2 ++ checkRcfg ls1 l2
-checkRcfg ls1@((TAsk _ _, _) : _) (_ : ls2) = checkRcfg ls1 ls2
-checkRcfg ls1@((TSend _ _, _) : _) (_ : ls2) = checkRcfg ls1 ls2
-checkRcfg (_ : ls1) ls2@((TAsk _ _, _) : _) = checkRcfg ls1 ls2
-checkRcfg (_ : ls1) ls2@((TSend _ _, _) : _) = checkRcfg ls1 ls2
-checkRcfg (_ : ls1) (_ : ls2) = checkRcfg ls1 ls2
+checkRcfg :: Bool -> [(Transition, DyNetKat)] -> [(Transition, DyNetKat)] -> [(Transition, DyNetKat)]
+checkRcfg _ [] _ = []
+checkRcfg _ _ [] = []
+checkRcfg flipParts ls1@((TAsk s1 p1, nx1) : l1) ls2@((TSend s2 p2, nx2) : l2)
+    | s1 == s2 && p1 == p2 =
+        [(Rcfg s1 p1, if flipParts then Par nx2 nx1 else Par nx1 nx2)] ++ checkRcfg flipParts l1 ls2 ++ checkRcfg flipParts ls1 l2
+checkRcfg flipParts ls1@((TAsk _ _, _) : _) (_ : ls2) = checkRcfg flipParts ls1 ls2
+checkRcfg flipParts (_ : ls1) ls2@((TSend _ _, _) : _) = checkRcfg flipParts ls1 ls2
+checkRcfg _ (_ : ls1) (_ : ls2) = checkRcfg ls1 ls2
 
 -- | transform a set of definitions and a DyNetKat program into a set of program transition triplets
 eval :: [(String, DyNetKat)] -> DyNetKat -> [Packet] -> [(DyNetKat, Transition, DyNetKat, [Packet], [Packet])]
