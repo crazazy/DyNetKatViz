@@ -4,15 +4,15 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, base, lib }:
+  f = { mkDerivation, base, containers, lib, process }:
       mkDerivation {
         pname = "dynetkat";
         version = "0.1.0.0";
         src = ./.;
         isLibrary = true;
         isExecutable = true;
-        libraryHaskellDepends = [ base ];
-        executableHaskellDepends = [ base ];
+        libraryHaskellDepends = [ base containers ];
+        executableHaskellDepends = [ base process ];
         testHaskellDepends = [ base ];
         description = "A simple DyNetKAT model";
         license = lib.licenses.asl20;

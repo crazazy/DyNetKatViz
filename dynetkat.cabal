@@ -61,7 +61,8 @@ library
     -- Modules exported by the library.
     exposed-modules:  MyLib,
                       Data.NetKat,
-                      Data.DyNetKat
+                      Data.DyNetKat,
+                      Result.Dot
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -95,6 +96,7 @@ executable dynetkat
     -- Other library packages from which modules are imported.
     build-depends:
         base ^>=4.16.4.0,
+        process,
         dynetkat
 
     -- Directories containing source files.

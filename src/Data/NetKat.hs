@@ -29,16 +29,16 @@ toBinary x = go 8 x
 pToBV :: Packet -> String
 pToBV (Packet src dest port typ) =
     toBinary src
-        ++ toBinary dest
-        ++ toBinary port
-        ++ toBinary typ
+        <> toBinary dest
+        <> toBinary port
+        <> toBinary typ
   where
 
 filterToBV :: Filter -> Word8 -> String
-filterToBV Src x = toBinary x ++ replicate 24 '?'
-filterToBV Dest x = replicate 8 '?' ++ toBinary x ++ replicate 16 '?'
-filterToBV Port x = replicate 16 '?' ++ toBinary x ++ replicate 8 '?'
-filterToBV Typ x = replicate 24 '?' ++ toBinary x
+filterToBV Src x = toBinary x <> replicate 24 '?'
+filterToBV Dest x = replicate 8 '?' <> toBinary x <> replicate 16 '?'
+filterToBV Port x = replicate 16 '?' <> toBinary x <> replicate 8 '?'
+filterToBV Typ x = replicate 24 '?' <> toBinary x
 
 data NetKat
     = Nil
@@ -68,13 +68,13 @@ mockEval (Change f w) p = case f of
     Dest -> [p{dest = w}]
     Port -> [p{port = w}]
     Typ -> [p{typ = w}]
-mockEval (Or n1 n2) p = mockEval n1 p ++ mockEval n2 p
+mockEval (Or n1 n2) p = mockEval n1 p <> mockEval n2 p
 mockEval (Seq n1 n2) p = mockEval n1 p >>= mockEval n2
 mockEval (Closure n) p = go Pass []
   where
     go s xs
         | null as = xs -- we stop when we find no new packes upon more iterations
-        | otherwise = go (Seq n s) (as ++ xs)
+        | otherwise = go (Seq n s) (as <> xs)
       where
         as = filter (not . flip elem xs) $ mockEval s p
 
@@ -82,17 +82,17 @@ flowTable :: [(Word8, Word8)] -> NetKat
 flowTable ft = foldr Or Nil $ map (\(a, b) -> (Test Port a) `Seq` (Change Port b)) ft
 
 parens :: String -> String
-parens s = "(" ++ s ++ ")"
+parens s = "(" <> s <> ")"
 
 toKatBV :: NetKat -> String
 toKatBV Nil = "F"
 toKatBV Pass = "T"
-toKatBV (Test f w) = parens $ "x=" ++ filterToBV f w
+toKatBV (Test f w) = parens $ "x=" <> filterToBV f w
 toKatBV (Not p) = parens $ '~' : (toKatBV p)
-toKatBV (Change f w) = parens $ "x:=" ++ filterToBV f w
-toKatBV (Or p1 p2) = parens $ (toKatBV p1) ++ "+" ++ (toKatBV p2)
-toKatBV (Seq p1 p2) = parens $ (toKatBV p1) ++ ";" ++ (toKatBV p2)
-toKatBV (Closure p) = parens $ "(" ++ toKatBV p ++ ")*"
+toKatBV (Change f w) = parens $ "x:=" <> filterToBV f w
+toKatBV (Or p1 p2) = parens $ (toKatBV p1) <> "+" <> (toKatBV p2)
+toKatBV (Seq p1 p2) = parens $ (toKatBV p1) <> ";" <> (toKatBV p2)
+toKatBV (Closure p) = parens $ "(" <> toKatBV p <> ")*"
 
 {-
 data NetKat a

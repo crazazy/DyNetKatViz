@@ -1,5 +1,5 @@
 module Data.DyNetKat (
-    DyNetKat,
+    DyNetKat (..),
     Transition,
     step,
     example,
@@ -69,7 +69,7 @@ checkRcfg flipParts ls1@((TAsk s1 p1, nx1) : l1) ls2@((TSend s2 p2, nx2) : l2)
         [(Rcfg s1 p1, if flipParts then Par nx2 nx1 else Par nx1 nx2)] ++ checkRcfg flipParts l1 ls2 ++ checkRcfg flipParts ls1 l2
 checkRcfg flipParts ls1@((TAsk _ _, _) : _) (_ : ls2) = checkRcfg flipParts ls1 ls2
 checkRcfg flipParts (_ : ls1) ls2@((TSend _ _, _) : _) = checkRcfg flipParts ls1 ls2
-checkRcfg _ (_ : ls1) (_ : ls2) = checkRcfg ls1 ls2
+checkRcfg flipParts (_ : ls1) (_ : ls2) = checkRcfg flipParts ls1 ls2
 
 -- | transform a set of definitions and a DyNetKat program into a set of program transition triplets
 eval :: [(String, DyNetKat)] -> DyNetKat -> [Packet] -> [(DyNetKat, Transition, DyNetKat, [Packet], [Packet])]
